@@ -1,0 +1,37 @@
+import cv2
+import numpy as np
+#
+cap = cv2.VideoCapture("video.avi")#l?y video
+while True:#l?y ?nh lien t?c
+    ret,frame= cap.read()#l?y ?nh lien t?c t? video ??y vao khung hinh va hi?n th? true false
+    print(ret)
+    width = int(cap.get(3))
+    height = int(cap.get(4))
+    small = cv2.resize(frame,(0,0),fx = 0.5 , fy=0.5)
+    img = np.zeros(frame.shape,np.uint8)
+    img[:height//2, :width//2]= small
+    img[:height // 2, width // 2:] = cv2.rotate(small, cv2.ROTATE_180)
+    img[height // 2:, :width // 2] = small
+    img[height // 2:, width // 2:] = small
+    # img[:height//2, width//2:] = cv2.rotate(small,cv2.ROTATE_90_CLOCKWISE)
+    # img[height//2:, :width//2] = cv2.rotate(small,cv2.ROTATE_180)
+    # img[height //2:, width//2:] =cv2.rotate(small,cv2.ROTATE_90_COUNTERCLOCKWISE)
+    cv2.imshow("cam",img)#show video
+    if cv2.waitKey(1) == ord("s"):
+        break
+cap.release()#t?t cam
+cv2.destroyAllWindows()#t?t c?a s?
+
+
+#start video
+# import cv2
+# #
+# cap = cv2.VideoCapture("video.avi")#l?y video
+# while True:#l?y ?nh lien t?c
+#     ret,frame= cap.read()#l?y ?nh lien t?c t? video ??y vao khung hinh va hi?n th? true false
+#     print(ret)
+#     cv2.imshow("cam",frame)#show video
+#     if cv2.waitKey(1) == ord("s"):
+#         break
+# cap.release()#t?t cam
+# cv2.destroyAllWindows()#t?t c?a s?
