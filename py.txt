@@ -1,0 +1,141 @@
+import os   # ?i?u h??ng qua cac th? m?c va t?p tin,
+import cv2   # x? ly ?nh va th? giac may tinh
+from pyzbar import pyzbar   # Pyzbar: quet ma v?ch va ma QR  t? hinh ?nh
+import zxingcpp  # gi?i ma t? hinh ?nh ho?c webcam.
+import numpy as np  # tinh toan s? h?c va th?ng ke
+                    # np lam vi?c v?i cac m?ng ?a chi?u (arrays) va ma tr?n.
+from pylibdmtx.pylibdmtx import decode  # ham decode gi?i ma ma tr?n datamatrix t? hinh ?nh.
+                    # dung ?? gi?i ma ma tr?n datamatrix
+#333333333333333333333333333333333
+def read_barcode(frame, gray): #quyets ma v?ch t? khung hinh khung hinh (?nh mau), va gray la hinh ?nh xam.
+    data = pyzbar.decode(frame)#gi?i ma v?ch t? frame(khung hinh)
+    if data != []:
+        data = data[0][0]
+        if len(data) > 9:
+            print(data);
+            return data # tr? ma v?ch
+        else:
+            return None
+    else:
+        data = pyzbar.decode(gray)
+        if data != []:
+            data = data[0][0]
+            if len(data) > 9:
+                print(data);
+                return data
+            else:
+                return None
+        else:
+            return None
+
+#2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1 2.1
+def read_WeChatQRCode(frame, gray):#ham gi?i ma QR t? c? frame va gray, va n?u khong thanh cong, no s? d?ng ham read_barcode
+    data = detector.detectAndDecode(frame)# gi?i ma ma qr t? frame
+    if data != ():
+        data = data[0].encode("UTF-8")#chu?i ?a ???c chuy?n ??i thanh ki?u bytes theo ma UTF-8
+        if len(data) > 9:
+            return data
+        else:
+            return self.read_barcode(frame, gray)
+    else:
+        data = sdetector.detectAndDecode(gray)
+        if data != ():
+            data = data[0].encode("UTF-8")#chu?i ?a ???c chuy?n ??i thanh ki?u bytes theo ma UTF-8
+            if len(data) > 9:
+                return data
+            else:
+                return read_barcode(frame, gray)
+        else:
+            return read_barcode(frame, gray)
+
+def read_barcode_zxing(frame, gray):
+    data = zxingcpp.read_barcode(frame)
+    if data is not None:
+        data = data.text
+        if len(data) > 9:
+            # print("-----frame_zxing-----")
+            data = data.encode("utf-8")
+            return data
+        else:
+            return read_WeChatQRCode(frame, gray)
+    else:
+        data = zxingcpp.read_barcode(gray)
+        if data is not None:
+            data = data.text
+            if len(data) > 9:
+                # print("-----gray_zxing-----")
+                data = data.encode("utf-8")
+                return data
+            else:
+                return read_WeChatQRCode(frame, gray)
+        else:
+            return read_WeChatQRCode(frame, gray)
+
+#---------------------------------------------------
+
+
+#2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 2.2 1 dung
+def read_datamatrix( frame):#Gi?i ma t? m?t khung hinh ?c c?t ra va lam m? phan vung r?i chuy?n ??i ?nh sang xam r?i s? ly hinh ?nh
+    # tr? v? 1 chu?i 17 ky t?
+    img = frame[80:400,80:450]
+    kernel = np.ones((3, 3), np.uint8) #pixel trong hinh ?nh g?c s? ???c m? r?ng b?ng pixel lan c?n trong m?t khu v?c 3x3 xung quanh no
+    filt = cv2.GaussianBlur(src=img, ksize=(3, 3), sigmaX=0, sigmaY=0)#lam m? ph?n ?a c?t lam n?i b?t datamatrix
+    gray = cv2.cvtColor(filt, cv2.COLOR_BGR2GRAY) # Vi?c chuy?n ??i sang hinh ?nh xam th??ng
+    dilation = cv2.dilate(gray, kernel, iterations=1)# s? d?ng phep dilation ?? t?ng c??ng cac ??c tr?ng trong hinh ?nh xam
+    for threshold in range(50, 140, 2):#l?p ng??ng 50-140 v?i kho?ng cahcs la 2
+        _, thresh = cv2.threshold(dilation, threshold, 255, cv2.THRESH_BINARY)
+        data = decode(thresh, timeout=60)
+        if len(data) > 0:
+            print("thresholddd: ", threshold) #
+            data = data[0][0]
+        if len(data) == 17:
+            return data
+    return None
+
+#11111111111111111111111111111111111111 for co dung t?i dung
+def read_datamatrix_zxing(frame, gray):#gi?i ma b?ng th? vi?n zxingcpp n?u ko ?c gi?i ?c thi th? v?i ham read_datamatrix()
+    data = zxingcpp.read_barcode(frame)
+    if data is not None:
+        data = data.text
+        if len(data) > 9:
+            # print("-----frame_zxing data-----")
+            data = data.encode("utf-8")
+            return data
+        else:
+            return read_datamatrix(frame)#2.2
+    else:
+        data = zxingcpp.read_barcode(gray)
+        if data is not None:
+            data = data.text
+            if len(data) > 9:
+                data = data.encode("utf-8")
+                return data
+            else:
+                return read_datamatrix(frame)
+        else:
+            return read_datamatrix(frame)#2.2
+
+
+#-------------------------------------------------------------
+path = r'img_ng/img_barcode'
+output_folder = r'img_ng/img_err'
+count = 0
+
+for i in os.scandir(path): # duy?t qua cac ?nh trong folder
+    img = cv2.imread(i.path) # gan ?nh = img ?? x? ly
+    #80: 400, 80: 450
+    IMG = img[90:340, 100:460]# c?t 1 vung ?nh g?c gan vao bi?n m?i
+    img_resize = cv2.resize(IMG, None, fx=1.5, fy=1.5) # img_resize
+    data = read_datamatrix_zxing(img_resize, img_resize)
+    #data = read_WeChatQRCode(img_resize)
+    if data is not None: #n?u ko r?ng
+        count += 1
+        print(data, count)
+    else:
+        # N?u khong ??c ???c ma, l?u ?nh vao th? m?c ??u ra
+        output_path = os.path.join(output_folder, f'image_{count}.png')
+        cv2.imwrite(output_path, IMG)
+    cv2.imshow("imgg", img)
+    cv2.imshow("img resize", img_resize)
+    cv2.imshow("img", IMG)
+    cv2.waitKey(1)
