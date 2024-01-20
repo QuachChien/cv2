@@ -1,0 +1,138 @@
+import os
+import cv2
+from pyzbar import pyzbar
+import zxingcpp
+import numpy as np
+from pylibdmtx.pylibdmtx import decode
+
+
+def read_barcode(frame, gray):
+    data = pyzbar.decode(frame)
+    if data != []:
+        data = data[0][0]
+        if len(data) > 9:
+            print("-----frame_pyzbar-----")
+            return data
+        else:
+            return None
+    else:
+        data = pyzbar.decode(gray)
+        if data != []:
+            print("-----gray_pyzbar-----")
+            data = data[0][0]
+            if len(data) > 9:
+                return data
+            else:
+                return None
+        else:
+            return None
+
+def read_WeChatQRCode(frame, gray):
+    data, points = detector.detectAndDecode(frame)
+    if data != ():
+        data = data[0].encode("UTF-8")
+        if len(data) > 9:
+            print("---------frame read_WeChatQRCode---------")
+            return data
+        else:
+            return self.read_barcode(frame, gray)
+    else:
+        data, points = sdetector.detectAndDecode(gray)
+        if data != ():
+            data = data[0].encode("UTF-8")
+            if len(data) > 9:
+                print("---------gray read_WeChatQRCode---------")
+                return data
+            else:
+                return read_barcode(frame, gray)
+        else:
+            return read_barcode(frame, gray)
+
+def read_barcode_zxing(frame, gray):
+    data = zxingcpp.read_barcode(frame)
+    if data is not None:
+        data = data.text
+        if len(data) > 9:
+            print("-----frame_zxing-----")
+            data = data.encode("utf-8")
+            return data
+        else:
+            return read_WeChatQRCode(frame, gray)
+    else:
+        data = zxingcpp.read_barcode(gray)
+        if data is not None:
+            data = data.text
+            if len(data) > 9:
+                print("-----gray_zxing-----")
+                data = data.encode("utf-8")
+                return data
+            else:
+                return read_WeChatQRCode(frame, gray)
+        else:
+            return read_WeChatQRCode(frame, gray)
+
+
+def read_datamatrix_zxing(frame, gray):
+    data = zxingcpp.read_barcode(frame)
+    if data is not None:
+        data = data.text
+        if len(data) > 9:
+            # print("-----frame_zxing data-----")
+            data = data.encode("utf-8")
+            return data
+        else:
+            return read_datamatrix(frame)
+    else:
+        data = zxingcpp.read_barcode(gray)
+        if data is not None:
+            data = data.text
+            if len(data) > 9:
+                # print("-----gray_zxing data-----")
+                data = data.encode("utf-8")
+                return data
+            else:
+                return read_datamatrix(frame)
+        else:
+            return read_datamatrix(frame)
+
+def read_datamatrix( frame):
+    # #80:400,80:450
+    # img = frame[80:400,80:450]
+    kernel = np.ones((3, 3), np.uint8)
+    filt = cv2.GaussianBlur(src=frame, ksize=(3, 3), sigmaX=0, sigmaY=0)
+    gray = cv2.cvtColor(filt, cv2.COLOR_BGR2GRAY)
+    dilation = cv2.dilate(gray, kernel, iterations=1)
+    for threshold in range(50, 140, 2):
+        _, thresh = cv2.threshold(dilation, threshold, 255, cv2.THRESH_BINARY)
+        data = decode(thresh, timeout=60)
+        if len(data) > 0:
+            print("threshold: ", threshold)
+            # logger.info(str(threshold) + 'Nguong doc duoc client')
+            data = data[0][0]
+        if len(data) == 17:
+            return data
+    return None
+
+path= 'img'
+count = 0
+output_folder = 'Image_NG'
+
+# T?o th? m?c ??u ra n?u no khong t?n t?i
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+for i in os.scandir(path):
+    img = cv2.imread(i.path)
+#     IMG = img[80:400, 80:450]
+    img_resize = cv2.resize(img, None, fx=2.5, fy=2.5)
+    data = read_datamatrix_zxing(img_resize, img_resize)
+    if data is not None:
+        count += 1
+        print(data, count)
+    else:
+        # N?u khong ??c ???c ma, l?u ?nh vao th? m?c ??u ra
+            output_path = os.path.join(output_folder, f'image_{count}.png')
+            cv2.imwrite(output_path, img)
+
+    cv2.imshow("img", img)
+    cv2.waitKey(1)
